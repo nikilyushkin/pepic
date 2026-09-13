@@ -1,0 +1,48 @@
+name: Build and publish (arm64)
+
+# Апстримный workflow собирает образ под amd64 и пушит его под аккаунт того,
+# кто коммитит. Нам нужен arm64 (кластер живёт на iMac M1) и тег по SHA,
+# чтобы ArgoCD видел конкретную версию, а не плавающий latest.
+#
+# Раннер ubuntu-24.04-arm — нативный arm64 и бесплатный для публичных
+# репозиториев. Это важно: в Dockerfile CGO с vips и ffmpeg, под QEMU сборка
+# тянулась бы несоразмерно долго.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build arm64 image
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to ghcr
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/arm64
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/pepic:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/pepic:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Summary
+        run: |
+          echo "Образ: ghcr.io/${{ github.repository_owner }}/pepic:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Обновить тег в homelab-k8s: manifests/pepic/base/kustomization.yaml" >> $GITHUB_STEP_SUMMARY
