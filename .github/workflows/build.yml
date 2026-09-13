@@ -1,12 +1,12 @@
 name: Build and publish (arm64)
 
-# Апстримный workflow собирает образ под amd64 и пушит его под аккаунт того,
-# кто коммитит. Нам нужен arm64 (кластер живёт на iMac M1) и тег по SHA,
-# чтобы ArgoCD видел конкретную версию, а не плавающий latest.
+# The upstream workflow builds amd64 and pushes under the committer's account.
+# We need arm64 (the cluster runs on an M1 iMac) and a SHA tag, so that ArgoCD
+# sees a specific version rather than a floating latest.
 #
-# Раннер ubuntu-24.04-arm — нативный arm64 и бесплатный для публичных
-# репозиториев. Это важно: в Dockerfile CGO с vips и ffmpeg, под QEMU сборка
-# тянулась бы несоразмерно долго.
+# ubuntu-24.04-arm is a native arm64 runner, free for public repositories. That
+# matters here: the Dockerfile uses CGO with vips and ffmpeg, and building that
+# under QEMU would take disproportionately long.
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # без buildx драйвер по умолчанию не умеет экспорт кэша:
+      # without buildx the default driver cannot export a cache:
       # "Cache export is not supported for the docker driver"
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
@@ -49,5 +49,5 @@ jobs:
 
       - name: Summary
         run: |
-          echo "Образ: ghcr.io/${{ github.repository_owner }}/pepic:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "Обновить тег в homelab-k8s: manifests/pepic/base/kustomization.yaml" >> $GITHUB_STEP_SUMMARY
+          echo "Image: ghcr.io/${{ github.repository_owner }}/pepic:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "Update the tag in homelab-k8s: manifests/pepic/base/kustomization.yaml" >> $GITHUB_STEP_SUMMARY
